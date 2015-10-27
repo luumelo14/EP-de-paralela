@@ -103,10 +103,10 @@ void escreveArquivo(float** lago) {
 	for(i = 0; i < X; i++) {
 		for(j = 0; j < Y; j++) {
 			if(lago[i][j] < 0) {
-				fprintf(saida, "%d 0 0\n", ceil(lago[i][j]/delta));
+				fprintf(saida, "%d 0 0\n", (int) ceil(lago[i][j]/delta));
 			}
 			else {
-				fprintf(saida, "0 0 %d\n", ceil(lago[i][j]/delta));
+				fprintf(saida, "0 0 %d\n", (int) ceil(lago[i][j]/delta));
 			}
 				
 		}
