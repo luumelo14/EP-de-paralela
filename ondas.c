@@ -53,5 +53,5 @@ float** criaMatriz (int m, int n)
 
 int inteiroAleatorio (int maximo)
 {
-    return ( (double) rand() / (double) (RAND_MAX + 1)) * maximo;
+    return ( (double) rand() / ((double) RAND_MAX + 1)) * maximo;
 }
