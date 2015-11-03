@@ -56,7 +56,7 @@ int main (int argc, char* argv[]) {
 				}
 			}
 		}
-		if(rand() <= ((float) Z/100) * RAND_MAX) {
+		if(rand() <= ((float) P/100) * RAND_MAX) {
 			gotas[numGotas].x = inteiroAleatorio(L);
 			gotas[numGotas].y = inteiroAleatorio(H);
 			printf("gerou uma gota: %d %d \n", gotas[numGotas].x, gotas[numGotas].y);
@@ -103,6 +103,11 @@ void pegaEntrada(int argc, char* argv[]) {
 
 		if(argc > 2)
 			NPROCS = atoi(argv[2]);
+	}
+	else
+	{
+		printf("Uso: %s <entrada>\n", argv[0]);
+		exit(EXIT_FAILURE);
 	}
 }
 
