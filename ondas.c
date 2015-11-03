@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define H 500
+#define H 300
 #define L 500
-#define Z 25
-#define NITER 100
+#define Z 90
+#define NITER 30
 #define T 120
-#define V 10
-#define ALT 500
+#define V 50
+#define ALT 300
 #define LARG 500
 
 
@@ -37,13 +37,6 @@ int main (int argc, char* argv[]) {
 	lago = criaMatriz (H, L);
 	
 	for(i = 0; i < NITER; i++) {
-		if(rand() <= ((float) Z/100) * RAND_MAX) {
-			printf("gerou uma gota \n");
-			gotas[numGotas].x = inteiroAleatorio(L);
-			gotas[numGotas].y = inteiroAleatorio(H);
-			gotas[numGotas].tempo = (float) i * T / NITER;
-			numGotas++;
-		}
 		if(numGotas != 0) {
 			for(j = 0; j < H; j++) {
 				for(k = 0; k < L; k++) {
@@ -57,6 +50,13 @@ int main (int argc, char* argv[]) {
 				}
 			}
 		}
+		if(rand() <= ((float) Z/100) * RAND_MAX) {
+			gotas[numGotas].x = inteiroAleatorio(L);
+			gotas[numGotas].y = inteiroAleatorio(H);
+			printf("gerou uma gota: %d %d \n", gotas[numGotas].x, gotas[numGotas].y);
+			gotas[numGotas].tempo = (float) i * T / NITER;
+			numGotas++;
+		}
 	}
 	
 
@@ -67,7 +67,7 @@ int main (int argc, char* argv[]) {
 float** criaMatriz (int m, int n)
 {
     float** M; 
-	int i, j;
+	int i;
 	M = malloc (m * sizeof (float *));
 	for (i = 0; i < m; ++i)
 	   M[i] = calloc (n, sizeof (float));
