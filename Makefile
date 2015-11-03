@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -ansi -pedantic
+CFLAGS = -Wall
 LDLIBS = -lm
 
 ondas: ondas.o

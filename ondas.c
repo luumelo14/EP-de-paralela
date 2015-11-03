@@ -15,7 +15,7 @@
 float** criaMatriz (int m, int n);
 int temGota (int maxRand);
 int inteiroAleatorio (int maximo);
-float calculaDistancia (int x1, int y1, int x2, int y2, float aspectx, float aspecty);
+float calculaDistancia (int x1, int y1, int x2, int y2);
 void escreveArquivo(float** lago);
 void pegaEntrada(int argc, char* argv[]);
 
@@ -25,8 +25,10 @@ typedef struct {
 	float tempo;
 } gota;
 
-int H, L, NITER, T, SEED, NPROCS;
-float P, V, ALT, LARG, EPS;
+int H, L, NITER, T, SEED, NPROCS, ALT, LARG;
+float P, V, EPS;
+
+float** tem_gota;
 
 int main (int argc, char* argv[]) {
 
@@ -41,6 +43,7 @@ int main (int argc, char* argv[]) {
 	aspecty = (float) ALT/H;
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
+	tem_gota = criaMatriz (H, L);
 	
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
@@ -50,18 +53,23 @@ int main (int argc, char* argv[]) {
 					for(l = 0; l < numGotas; l++) {
 						t = (float) i * T / NITER - gotas[l].tempo;
 						/* aux = ro - v*t */
-						aux = calculaDistancia(j, k, gotas[l].x, gotas[l].y, aspectx, aspecty) - V*t;
+						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x, gotas[l].y) - V*t;
 						lago[j][k] += aux * exp(-1*aux*aux - (t/10));
 					}
 				}
 			}
 		}
 		if(rand() <= ((float) P/100) * RAND_MAX) {
-			gotas[numGotas].x = inteiroAleatorio(L);
-			gotas[numGotas].y = inteiroAleatorio(H);
+			gotas[numGotas].x = inteiroAleatorio(LARG);
+			gotas[numGotas].y = inteiroAleatorio(ALT);
+
+
+			tem_gota[(int) (gotas[numGotas].y / aspecty)][(int) (gotas[numGotas].x / aspectx)] = 1;
+
 			printf("gerou uma gota: %d %d \n", gotas[numGotas].x, gotas[numGotas].y);
 			gotas[numGotas].tempo = (float) i * T / NITER;
 			numGotas++;
+
 		}
 	}
 	
@@ -87,9 +95,9 @@ int inteiroAleatorio (int maximo)
     return ( (double) rand() / ((double) RAND_MAX + 1)) * maximo;
 }
 
-float calculaDistancia (int x1, int y1, int x2, int y2, float aspectx, float aspecty) {
-	float difx = (x2 - x1)*aspectx;
-	float dify = (y2 - y1)*aspecty; 
+float calculaDistancia (int x1, int y1, int x2, int y2) {
+	float difx = (x2 - x1);
+	float dify = (y2 - y1); 
 	return sqrt( difx * difx  + dify * dify );
 }
 
@@ -97,7 +105,7 @@ void pegaEntrada(int argc, char* argv[]) {
 	FILE *entrada;
 	if(argc > 1) {
 		entrada = fopen(argv[1], "r");
-		fscanf(entrada, "(%f,%f) \n (%d,%d) \n %d \n %f \n %f \n %d \n %f \n %d",
+		fscanf(entrada, "(%d,%d) \n (%d,%d) \n %d \n %f \n %f \n %d \n %f \n %d",
 			&LARG, &ALT, &L, &H, &T, &V, &EPS, &NITER, &P, &SEED);
 		fclose(entrada);
 
@@ -135,13 +143,17 @@ void escreveArquivo(float** lago) {
 
 	for(i = 0; i < H; i++) {
 		for(j = 0; j < L; j++) {
-			if(lago[i][j] < 0) {
-				fprintf(saida, "%d 0 0\n", (int) ceil(-lago[i][j]/delta));
-			}
-			else {
-				fprintf(saida, "0 0 %d\n", (int) ceil(lago[i][j]/delta));
-			}
-				
+			if(tem_gota[i][j])
+				fprintf(saida, "0 255 0\n");
+			else
+			{
+				if(lago[i][j] < 0) {
+					fprintf(saida, "%d 0 0\n", (int) ceil(-lago[i][j]/delta));
+				}
+				else {
+					fprintf(saida, "0 0 %d\n", (int) ceil(lago[i][j]/delta));
+				}
+			}			
 		}
 	}
 	fclose(saida);
