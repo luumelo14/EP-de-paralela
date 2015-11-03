@@ -1,14 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#define H 300
-#define L 500
-#define Z 90
-#define NITER 30
-#define T 120
-#define V 50
-#define ALT 300
-#define LARG 500
+
+/* #define H 5
+// #define L 5
+// #define P 90
+// #define NITER 30
+// #define T 120
+// #define V 10
+// #define ALT 5
+// #define LARG 5 */
 
 
 float** criaMatriz (int m, int n);
@@ -16,6 +17,7 @@ int temGota (int maxRand);
 int inteiroAleatorio (int maximo);
 float calculaDistancia (int x1, int y1, int x2, int y2, float aspectx, float aspecty);
 void escreveArquivo(float** lago);
+void pegaEntrada(int argc, char* argv[]);
 
 typedef struct {
 	int x;
@@ -23,6 +25,8 @@ typedef struct {
 	float tempo;
 } gota;
 
+int H, L, NITER, T, SEED, NPROCS;
+float P, V, ALT, LARG, EPS;
 
 int main (int argc, char* argv[]) {
 
@@ -31,6 +35,8 @@ int main (int argc, char* argv[]) {
 	gota * gotas;
 	float** lago;
 	float aspectx, aspecty;
+
+	pegaEntrada(argc, argv);
 	aspectx = (float) LARG/L;
 	aspecty = (float) ALT/H;
 	gotas = malloc (NITER * sizeof(gota));
@@ -82,9 +88,22 @@ int inteiroAleatorio (int maximo)
 }
 
 float calculaDistancia (int x1, int y1, int x2, int y2, float aspectx, float aspecty) {
-	float difx = (x2 - x1) * aspectx;
-	float dify = (y2 - y1) * aspecty;
-	return sqrt( difx * difx + dify * dify );
+	float difx = (x2 - x1)*aspectx;
+	float dify = (y2 - y1)*aspecty; 
+	return sqrt( difx * difx  + dify * dify );
+}
+
+void pegaEntrada(int argc, char* argv[]) {
+	FILE *entrada;
+	if(argc > 1) {
+		entrada = fopen(argv[1], "r");
+		fscanf(entrada, "(%f,%f) \n (%d,%d) \n %d \n %f \n %f \n %d \n %f \n %d",
+			&LARG, &ALT, &L, &H, &T, &V, &EPS, &NITER, &P, &SEED);
+		fclose(entrada);
+
+		if(argc > 2)
+			NPROCS = atoi(argv[2]);
+	}
 }
 
 void escreveArquivo(float** lago) {
@@ -120,7 +139,5 @@ void escreveArquivo(float** lago) {
 				
 		}
 	}
-
 	fclose(saida);
-
 }
