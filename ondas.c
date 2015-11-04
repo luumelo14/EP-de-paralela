@@ -37,6 +37,7 @@ int main (int argc, char* argv[]) {
 	gota * gotas;
 	float** lago;
 	float aspectx, aspecty;
+	float h;
 
 	pegaEntrada(argc, argv);
 	aspectx = (float) LARG/L;
@@ -44,9 +45,11 @@ int main (int argc, char* argv[]) {
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
 	tem_gota = criaMatriz (H, L);
-	
+	printf("eps: %.15f \n", EPS);
+
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
+			#pragma omp parallel for private(t, aux, h, k, l)
 			for(j = 0; j < H; j++) {
 				for(k = 0; k < L; k++) {
 					lago[j][k] = 0;
@@ -54,7 +57,11 @@ int main (int argc, char* argv[]) {
 						t = (float) i * T / NITER - gotas[l].tempo;
 						/* aux = ro - v*t */
 						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x, gotas[l].y) - V*t;
-						lago[j][k] += aux * exp(-1*aux*aux - (t/10));
+						h = aux * exp(-1*aux*aux - (t/10));
+						
+						if(fabs(h) >= EPS) {
+							lago[j][k] += h;
+						}
 					}
 				}
 			}
@@ -73,7 +80,12 @@ int main (int argc, char* argv[]) {
 		}
 	}
 	
-
+	// for(j = 0; j < H; j++) {
+	// 	for(k = 0; k < L; k++) {
+	// 		printf("%f ", lago[j][k]);
+	// 	}
+	// 	printf("\n");
+	// }
 	escreveArquivo(lago);
 	return 0;
 }
@@ -138,9 +150,10 @@ void escreveArquivo(float** lago) {
 			}
 		}
 	}
-
+	printf("hmax: %f pmax: %f \n", hmax, pmax); 
 	delta = (hmax > -pmax)? hmax/255 : -pmax/255;  
-
+	if(delta == 0)
+		delta = 1;
 	for(i = 0; i < H; i++) {
 		for(j = 0; j < L; j++) {
 			if(tem_gota[i][j])

@@ -1,6 +1,6 @@
 CC = gcc
-CFLAGS = -Wall
-LDLIBS = -lm
+CFLAGS = -Wall -fopenmp
+LDLIBS = -lm -fopenmp
 
 ondas: ondas.o
 
