@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 #include <math.h>
 
 /* #define H 5
@@ -45,35 +46,39 @@ int main (int argc, char* argv[]) {
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
 	tem_gota = criaMatriz (H, L);
-	printf("eps: %.15f \n", EPS);
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
-			#pragma omp parallel for private(t, aux, h, k, l)
+			#pragma omp parallel for private(t, aux, h, k, l) 
 			for(j = 0; j < H; j++) {
 				for(k = 0; k < L; k++) {
 					lago[j][k] = 0;
 					for(l = 0; l < numGotas; l++) {
 						t = (float) i * T / NITER - gotas[l].tempo;
 						/* aux = ro - v*t */
-						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x, gotas[l].y) - V*t;
+						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x * aspectx, gotas[l].y * aspecty) - V*t;
+
 						h = aux * exp(-1*aux*aux - (t/10));
 						
 						if(fabs(h) >= EPS) {
 							lago[j][k] += h;
+							// if(abs(aux - sqrt(2)/2) < EPS){
+							// 	if(l == 16)
+							// 	tem_gota[j][k] = 1;
+							// }
 						}
 					}
 				}
 			}
 		}
 		if(rand() <= ((float) P/100) * RAND_MAX) {
-			gotas[numGotas].x = inteiroAleatorio(LARG);
-			gotas[numGotas].y = inteiroAleatorio(ALT);
+			gotas[numGotas].x = inteiroAleatorio(L);
+			gotas[numGotas].y = inteiroAleatorio(H);
 
 
-			tem_gota[(int) (gotas[numGotas].y / aspecty)][(int) (gotas[numGotas].x / aspectx)] = 1;
+			tem_gota[(int) (gotas[numGotas].y)][(int) (gotas[numGotas].x)] = 1;
 
-			printf("gerou uma gota: %d %d \n", gotas[numGotas].x, gotas[numGotas].y);
+			printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
 			gotas[numGotas].tempo = (float) i * T / NITER;
 			numGotas++;
 
