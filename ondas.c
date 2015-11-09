@@ -67,7 +67,7 @@ int main (int argc, char* argv[]) {
 				#pragma omp parallel for private(aux, h, k) 
 				for(j = yi; j < yf; j++) {
 					for(k = xi; k < xf; k++) {
-						//if(l == 0)
+						if(l == 0)
 							lago[j][k] = 0;
 						//printf("%f", t);
 						/* aux = ro - v*t */
