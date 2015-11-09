@@ -33,8 +33,8 @@ float** tem_gota;
 
 int main (int argc, char* argv[]) {
 
-	int i, j, k, l, numGotas = 0;
-	float t, aux;
+	int i, j, k, l, xi, yi, xf, yf, numGotas = 0;
+	float t, aux, auxx, auxy, max;
 	gota * gotas;
 	float** lago;
 	float aspectx, aspecty;
@@ -46,26 +46,41 @@ int main (int argc, char* argv[]) {
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
 	tem_gota = criaMatriz (H, L);
+	max = sqrt(2)/2;
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
-			#pragma omp parallel for private(t, aux, h, k, l) 
-			for(j = 0; j < H; j++) {
-				for(k = 0; k < L; k++) {
-					lago[j][k] = 0;
-					for(l = 0; l < numGotas; l++) {
-						t = (float) i * T / NITER - gotas[l].tempo;
+			for(l = 0; l < numGotas; l++) {
+				t = (float) i * T / NITER - gotas[l].tempo;
+				max = (sqrt(2)/2 + V*t);
+				auxy = (int) (max/aspecty);
+				auxx = (int) (max/aspectx);
+				yi = gotas[l].y - auxy - 1;
+				if(yi < 0) yi = 0;	
+				yf =  gotas[l].y + auxy + 1;
+				if(yf > H-1) yf = H-1;
+				xi = gotas[l].x - auxx - 1;
+				if(xi < 0) xi = 0;	
+				xf =  gotas[l].x + auxx + 1;
+				if(xf > L-1) xf = L-1;
+				//printf("%d %d %d %d \n", xi, yi, xf, yf);
+				#pragma omp parallel for private(aux, h, k) 
+				for(j = yi; j < yf; j++) {
+					for(k = xi; k < xf; k++) {
+						if(l == 0)
+							lago[j][k] = 0;
+						//printf("%f", t);
 						/* aux = ro - v*t */
 						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x * aspectx, gotas[l].y * aspecty) - V*t;
-
+						// if(abs(aux - sqrt(2)/2) < EPS){
+						// 	if(l == 16 && i == 29)
+						// 	{tem_gota[j][k] = 1; printf("%d \n",(int) (gotas[l].x + (aux+V*t)/aspectx));}
+						// }
 						h = aux * exp(-1*aux*aux - (t/10));
 						
 						if(fabs(h) >= EPS) {
 							lago[j][k] += h;
-							// if(abs(aux - sqrt(2)/2) < EPS){
-							// 	if(l == 16)
-							// 	tem_gota[j][k] = 1;
-							// }
+							
 						}
 					}
 				}
@@ -78,7 +93,7 @@ int main (int argc, char* argv[]) {
 
 			tem_gota[(int) (gotas[numGotas].y)][(int) (gotas[numGotas].x)] = 1;
 
-			printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
+			//printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
 			gotas[numGotas].tempo = (float) i * T / NITER;
 			numGotas++;
 
