@@ -19,6 +19,7 @@ int inteiroAleatorio (int maximo);
 float calculaDistancia (int x1, int y1, int x2, int y2);
 void escreveArquivo(float** lago);
 void pegaEntrada(int argc, char* argv[]);
+void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) ;
 
 typedef struct {
 	int x;
@@ -33,7 +34,7 @@ float** tem_gota;
 
 int main (int argc, char* argv[]) {
 
-	int i, j, k, l, xi, yi, xf, yf, numGotas = 0;
+	int i, j, k, l, xi, yi, xf, yf, xmin, xmax, ymin, ymax, numGotas = 0;
 	float t, aux, auxx, auxy, max;
 	gota * gotas;
 	float** lago;
@@ -47,6 +48,7 @@ int main (int argc, char* argv[]) {
 	lago = criaMatriz (H, L);
 	tem_gota = criaMatriz (H, L);
 	max = sqrt(2)/2;
+	xmin = L; xmax = 0; ymin = L; ymax = 0;
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
@@ -56,6 +58,7 @@ int main (int argc, char* argv[]) {
 				auxy = (int) (max/aspecty);
 				auxx = (int) (max/aspectx);
 				yi = gotas[l].y - auxy - 1;
+
 				if(yi < 0) yi = 0;	
 				yf =  gotas[l].y + auxy + 1;
 				if(yf > H-1) yf = H-1;
@@ -63,13 +66,14 @@ int main (int argc, char* argv[]) {
 				if(xi < 0) xi = 0;	
 				xf =  gotas[l].x + auxx + 1;
 				if(xf > L-1) xf = L-1;
+				if(yi < ymin) ymin = yi;
+				if(xi < xmin) xmin = xi; 
+				if(yf > ymax) ymax = yf;
+				if(xf > xmax) xmax = xf;
 				//printf("%d %d %d %d \n", xi, yi, xf, yf);
 				#pragma omp parallel for private(aux, h, k) 
 				for(j = yi; j < yf; j++) {
 					for(k = xi; k < xf; k++) {
-						if(l == 0)
-							lago[j][k] = 0;
-						//printf("%f", t);
 						/* aux = ro - v*t */
 						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x * aspectx, gotas[l].y * aspecty) - V*t;
 						// if(abs(aux - sqrt(2)/2) < EPS){
@@ -85,11 +89,12 @@ int main (int argc, char* argv[]) {
 					}
 				}
 			}
+			if(i < NITER -1)
+			zeraLago(lago, ymin, ymax, xmin, xmax);
 		}
 		if(rand() <= ((float) P/100) * RAND_MAX) {
 			gotas[numGotas].x = inteiroAleatorio(L);
 			gotas[numGotas].y = inteiroAleatorio(H);
-
 
 			tem_gota[(int) (gotas[numGotas].y)][(int) (gotas[numGotas].x)] = 1;
 
@@ -176,8 +181,10 @@ void escreveArquivo(float** lago) {
 		delta = 1;
 	for(i = 0; i < H; i++) {
 		for(j = 0; j < L; j++) {
-			if(tem_gota[i][j])
+			if(tem_gota[i][j] == 1)
 				fprintf(saida, "0 255 0\n");
+			else if(tem_gota[i][j] == 2)
+				fprintf(saida, "255 255 255\n");
 			else
 			{
 				if(lago[i][j] < 0) {
@@ -190,4 +197,11 @@ void escreveArquivo(float** lago) {
 		}
 	}
 	fclose(saida);
+}
+
+void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) {
+	int i, j;
+	for(i = ymin; i <= ymax; i++)
+		for(j = xmin; j <= xmax; j++)
+			lago[i][j] = 0;
 }
