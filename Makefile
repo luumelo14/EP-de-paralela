@@ -4,5 +4,7 @@ LDLIBS = -lm -fopenmp
 
 ondas: ondas.o
 
+ondasantigo: ondasantigo.o
+
 .PHONY clean:
-	rm *.o ondas
+	rm *.o ondas ondasantigo
