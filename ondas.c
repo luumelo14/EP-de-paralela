@@ -96,6 +96,10 @@ int main (int argc, char* argv[]) {
 						altura = h(calculaDistancia(k * aspectx, j * aspecty, x_gota_lago, y_gota_lago), t);
 						
 						if(fabs(altura) >= EPS) {
+							if(j == 117 && k == 152) {
+								tem_gota[j][k] = 2;
+								printf("altura: %f lago: %f \n", altura, lago[j][k]);
+							}
 							lago[j][k] += altura;
 							
 						}
@@ -173,6 +177,7 @@ void escreveArquivo(float** lago) {
 
 	int i, j;
 	float hmax = 0.0, pmax = 0.0, delta;
+	int ihmax, jhmax, ipmax, jpmax;
 	FILE *saida;
 	saida = fopen("saida.ppm", "w");
 	fprintf(saida, "P3\n");
@@ -182,12 +187,17 @@ void escreveArquivo(float** lago) {
 		for(j = 0; j < L; j++) {
 			if(lago[i][j] > hmax) {
 				hmax = lago[i][j];
+				ihmax = i; jhmax = j;
+
 			}
 			else if(lago[i][j] < pmax) {
 				pmax = lago[i][j];
+				ipmax = i; jpmax = j;
 			}
 		}
 	}
+
+	printf("hmax: i,j = (%d, %d) pmax: i,j = (%d,%d)\n ", ihmax, jhmax, ipmax, jpmax);
 	printf("hmax: %f pmax: %f \n", hmax, pmax); 
 	delta = (hmax > -pmax)? hmax/255 : -pmax/255;  
 	if(delta == 0)
