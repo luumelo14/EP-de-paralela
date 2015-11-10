@@ -78,7 +78,7 @@ int main (int argc, char* argv[]) {
 
 			tem_gota[(int) (gotas[numGotas].y)][(int) (gotas[numGotas].x)] = 1;
 
-			printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
+			//printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
 			gotas[numGotas].tempo = (float) i * T / NITER;
 			numGotas++;
 
