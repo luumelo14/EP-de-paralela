@@ -19,7 +19,8 @@ int inteiroAleatorio (int maximo);
 float calculaDistancia (int x1, int y1, int x2, int y2);
 void escreveArquivo(float** lago);
 void pegaEntrada(int argc, char* argv[]);
-void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) ;
+void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax);
+float h(float p, int t);
 
 typedef struct {
 	int x;
@@ -35,11 +36,11 @@ float** tem_gota;
 int main (int argc, char* argv[]) {
 
 	int i, j, k, l, xi, yi, xf, yf, xmin, xmax, ymin, ymax, numGotas = 0;
-	float t, aux, auxx, auxy, max;
+	float t, aux, auxx, auxy, max, raizdedois, x_gota_lago, y_gota_lago;
 	gota * gotas;
 	float** lago;
 	float aspectx, aspecty;
-	float h;
+	float altura;
 
 	pegaEntrada(argc, argv);
 	aspectx = (float) LARG/L;
@@ -47,18 +48,19 @@ int main (int argc, char* argv[]) {
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
 	tem_gota = criaMatriz (H, L);
-	max = sqrt(2)/2;
-	xmin = L; xmax = 0; ymin = L; ymax = 0;
+	raizdedois = sqrt(2)/2;
+	
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
+			xmin = L; xmax = 0; ymin = L; ymax = 0;
 			for(l = 0; l < numGotas; l++) {
 				t = (float) i * T / NITER - gotas[l].tempo;
-				max = (sqrt(2)/2 + V*t);
+				max = (raizdedois + V*t);
 				auxy = (int) (max/aspecty);
 				auxx = (int) (max/aspectx);
-				yi = gotas[l].y - auxy - 1;
 
+				yi = gotas[l].y - auxy - 1;
 				if(yi < 0) yi = 0;	
 				yf =  gotas[l].y + auxy + 1;
 				if(yf > H-1) yf = H-1;
@@ -66,24 +68,35 @@ int main (int argc, char* argv[]) {
 				if(xi < 0) xi = 0;	
 				xf =  gotas[l].x + auxx + 1;
 				if(xf > L-1) xf = L-1;
+
+				x_gota_lago = gotas[l].x * aspectx;
+				y_gota_lago = gotas[l].y * aspecty;
+
+				while(yi > 0 && h(calculaDistancia(x_gota_lago, yi * aspecty, x_gota_lago, y_gota_lago), t) > EPS) {
+					yi--;
+				}
+				while(yf < H-1 && h(calculaDistancia(x_gota_lago, yf * aspecty, x_gota_lago, y_gota_lago), t) > EPS) {
+					yf++;
+				}
+				while(xi > 0 && h(calculaDistancia(xi * aspectx, y_gota_lago, x_gota_lago, y_gota_lago), t) > EPS) {
+					xi--;
+				}
+				while(xf < L-1 && h(calculaDistancia(xf * aspectx, y_gota_lago, x_gota_lago, y_gota_lago), t) > EPS) {
+					xf++;
+				}
+
 				if(yi < ymin) ymin = yi;
 				if(xi < xmin) xmin = xi; 
 				if(yf > ymax) ymax = yf;
 				if(xf > xmax) xmax = xf;
 				//printf("%d %d %d %d \n", xi, yi, xf, yf);
-				#pragma omp parallel for private(aux, h, k) 
+				#pragma omp parallel for private(aux, altura, k) 
 				for(j = yi; j < yf; j++) {
 					for(k = xi; k < xf; k++) {
-						/* aux = ro - v*t */
-						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x * aspectx, gotas[l].y * aspecty) - V*t;
-						// if(abs(aux - sqrt(2)/2) < EPS){
-						// 	if(l == 16 && i == 29)
-						// 	{tem_gota[j][k] = 1; printf("%d \n",(int) (gotas[l].x + (aux+V*t)/aspectx));}
-						// }
-						h = aux * exp(-1*aux*aux - (t/10));
+						altura = h(calculaDistancia(k * aspectx, j * aspecty, x_gota_lago, y_gota_lago), t);
 						
-						if(fabs(h) >= EPS) {
-							lago[j][k] += h;
+						if(fabs(altura) >= EPS) {
+							lago[j][k] += altura;
 							
 						}
 					}
@@ -204,4 +217,9 @@ void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) {
 	for(i = ymin; i <= ymax; i++)
 		for(j = xmin; j <= xmax; j++)
 			lago[i][j] = 0;
+}
+
+float h(float ro, int t) {
+	float aux = ro - V*t;
+	return aux * exp(-1*aux*aux - (t/10));
 }
