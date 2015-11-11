@@ -6,5 +6,7 @@ ondas: ondas.o
 
 ondasantigo: ondasantigo.o
 
+ondasintermediario: ondasintermediario.o
+
 .PHONY clean:
-	rm *.o ondas ondasantigo
+	rm *.o ondas ondasantigo ondasintermediario

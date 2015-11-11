@@ -19,6 +19,9 @@ int inteiroAleatorio (int maximo);
 float calculaDistancia (int x1, int y1, int x2, int y2);
 void escreveArquivo(float** lago);
 void pegaEntrada(int argc, char* argv[]);
+void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax);
+float h(float p, float t);
+void calculaQuadradoLago(float** lago, int xi, int xf, int yi, int yf, float x_gota_lago, float y_gota_lago, float t);
 
 typedef struct {
 	int x;
@@ -27,59 +30,80 @@ typedef struct {
 } gota;
 
 int H, L, NITER, T, SEED, NPROCS, ALT, LARG;
+float aspectx, aspecty;
 float P, V, EPS;
 
 float** tem_gota;
 
 int main (int argc, char* argv[]) {
 
-	int i, j, k, l, numGotas = 0;
-	float t, aux;
+	int i, l, xi, yi, xf, yf, xmin, xmax, ymin, ymax, numGotas = 0;
+	float t, auxx, auxy, max, raizdedois, x_gota_lago, y_gota_lago;
 	gota * gotas;
 	float** lago;
-	float aspectx, aspecty;
-	float h;
 
 	pegaEntrada(argc, argv);
+	srand(SEED);
 	aspectx = (float) LARG/L;
 	aspecty = (float) ALT/H;
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
 	tem_gota = criaMatriz (H, L);
+	raizdedois = sqrt(2)/2;
+	
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
-			#pragma omp parallel for private(t, aux, h, k, l) 
-			for(j = 0; j < H; j++) {
-				for(k = 0; k < L; k++) {
-					lago[j][k] = 0;
-					for(l = 0; l < numGotas; l++) {
-						t = (float) i * T / NITER - gotas[l].tempo;
-						/* aux = ro - v*t */
-						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x * aspectx, gotas[l].y * aspecty) - V*t;
+			xmin = L; xmax = 0; ymin = L; ymax = 0;
+			for(l = 0; l < numGotas; l++) {
+				t = (float) i * T / NITER - gotas[l].tempo;
+				max = (raizdedois + V*t);
+				auxy = (int) (max/aspecty);
+				auxx = (int) (max/aspectx);
 
-						h = aux * exp(-1*aux*aux - (t/10));
-						
-						if(fabs(h) >= EPS) {
-							lago[j][k] += h;
-							
-							// if(abs(aux - sqrt(2)/2) < EPS){
-							// 	if(l == 16)
-							// 	tem_gota[j][k] = 1;
-							// }
-						}
-					}
+				yi = gotas[l].y - auxy - 1;
+				if(yi < 0) yi = 0;	
+				yf =  gotas[l].y + auxy + 1;
+				if(yf > H) yf = H;
+				xi = gotas[l].x - auxx - 1;
+				if(xi < 0) xi = 0;	
+				xf =  gotas[l].x + auxx + 1;
+				if(xf > L) xf = L;
+
+				x_gota_lago = gotas[l].x * aspectx;
+				y_gota_lago = gotas[l].y * aspecty;
+
+				while(yi > 0 && h(calculaDistancia(x_gota_lago, yi * aspecty, x_gota_lago, y_gota_lago), t) > EPS) {
+					yi--;
 				}
+				while(yf < H && h(calculaDistancia(x_gota_lago, yf * aspecty, x_gota_lago, y_gota_lago), t) > EPS) {
+					yf++;
+				}
+				while(xi > 0 && h(calculaDistancia(xi * aspectx, y_gota_lago, x_gota_lago, y_gota_lago), t) > EPS) {
+					xi--;
+				}
+				while(xf < L && h(calculaDistancia(xf * aspectx, y_gota_lago, x_gota_lago, y_gota_lago), t) > EPS) {
+					xf++;
+				}
+
+				if(yi < ymin) ymin = yi;
+				if(xi < xmin) xmin = xi; 
+				if(yf > ymax) ymax = yf;
+				if(xf > xmax) xmax = xf;
+				//printf("%d %d %d %d \n", xi, yi, xf, yf);
+
+				calculaQuadradoLago(lago, xi, xf, yi, yf, x_gota_lago, y_gota_lago, t);
 			}
+			if(i < NITER -1)
+			zeraLago(lago, ymin, ymax, xmin, xmax);
 		}
 		if(rand() <= ((float) P/100) * RAND_MAX) {
 			gotas[numGotas].x = inteiroAleatorio(L);
 			gotas[numGotas].y = inteiroAleatorio(H);
 
-
 			tem_gota[(int) (gotas[numGotas].y)][(int) (gotas[numGotas].x)] = 1;
 
-			//printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
+			printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
 			gotas[numGotas].tempo = (float) i * T / NITER;
 			numGotas++;
 
@@ -180,4 +204,32 @@ void escreveArquivo(float** lago) {
 		}
 	}
 	fclose(saida);
+}
+
+void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) {
+	int i, j;
+	for(i = ymin; i < ymax; i++)
+		for(j = xmin; j < xmax; j++)
+			lago[i][j] = 0;
+}
+
+float h(float ro, float t) {
+	float aux = ro - V*t;
+	return aux * exp(-1*aux*aux - (t/10));
+}
+
+void calculaQuadradoLago(float** lago, int xi, int xf, int yi, int yf, float x_gota_lago, float y_gota_lago, float t) {
+	int j, k;
+	float altura;
+	#pragma omp parallel for private(altura, k) 
+	for(j = yi; j < yf; j++) {
+		for(k = xi; k < xf; k++) {
+			altura = h(calculaDistancia(k * aspectx, j * aspecty, x_gota_lago, y_gota_lago), t);
+			
+			if(fabs(altura) >= EPS) {
+				lago[j][k] += altura;
+				
+			}
+		}
+	}
 }

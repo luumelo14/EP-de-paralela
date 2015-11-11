@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <math.h>
-
+#include <stdbool.h>
 /* #define H 5
 // #define L 5
 // #define P 90
@@ -21,6 +21,9 @@ void escreveArquivo(float** lago);
 void pegaEntrada(int argc, char* argv[]);
 void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax);
 float h(float p, float t);
+void calculaQuadradoLago(float** lago, int yi, int yf, int xi, int xf, float y_gota_lago, float x_gota_lago, float t);
+void espelhaQuadrado(float** lagoaux, int yi, int media_y, int yf, int xi, int media_x, int xf,  int quadrante);
+void somaLagos(float** lago, float** lagoaux, int yi, int yf, int xi, int xf);
 
 typedef struct {
 	int x;
@@ -29,27 +32,29 @@ typedef struct {
 } gota;
 
 int H, L, NITER, T, SEED, NPROCS, ALT, LARG;
+float aspectx, aspecty;
 float P, V, EPS;
 
 float** tem_gota;
 
 int main (int argc, char* argv[]) {
 
-	int i, j, k, l, xi, yi, xf, yf, xmin, xmax, ymin, ymax, numGotas = 0;
+	int i, l, xi, yi, xf, yf, xmin, xmax, ymin, ymax, media_x, media_y, numGotas = 0;
 	float t, auxx, auxy, max, raizdedois, x_gota_lago, y_gota_lago;
 	gota * gotas;
 	float** lago;
-	float aspectx, aspecty;
-	float altura;
-
+	float** lagoaux;
+	bool ondaDentroQuadrado;
 	pegaEntrada(argc, argv);
+	srand(SEED);
 	aspectx = (float) LARG/L;
 	aspecty = (float) ALT/H;
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
 	tem_gota = criaMatriz (H, L);
+	lagoaux = criaMatriz (H, L);
 	raizdedois = sqrt(2)/2;
-	
+
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
@@ -59,16 +64,27 @@ int main (int argc, char* argv[]) {
 				max = (raizdedois + V*t);
 				auxy = (int) (max/aspecty);
 				auxx = (int) (max/aspectx);
-
+				ondaDentroQuadrado = true;
 				yi = gotas[l].y - auxy - 1;
-				if(yi < 0) yi = 0;	
+				if(yi < 0) {
+					yi = 0;	
+					ondaDentroQuadrado = false;
+				}
 				yf =  gotas[l].y + auxy + 1;
-				if(yf > H) yf = H;
+				if(yf > H) {
+					yf = H;
+					ondaDentroQuadrado = false;
+				}
 				xi = gotas[l].x - auxx - 1;
-				if(xi < 0) xi = 0;	
+				if(xi < 0) {
+					xi = 0;
+					ondaDentroQuadrado = false;
+				}	
 				xf =  gotas[l].x + auxx + 1;
-				if(xf > L) xf = L;
-
+				if(xf > L) {
+					xf = L;
+					ondaDentroQuadrado = false;
+				}
 				x_gota_lago = gotas[l].x * aspectx;
 				y_gota_lago = gotas[l].y * aspecty;
 
@@ -89,21 +105,33 @@ int main (int argc, char* argv[]) {
 				if(xi < xmin) xmin = xi; 
 				if(yf > ymax) ymax = yf;
 				if(xf > xmax) xmax = xf;
+
+				
 				//printf("%d %d %d %d \n", xi, yi, xf, yf);
-				#pragma omp parallel for private(altura, k) 
-				for(j = yi; j < yf; j++) {
-					for(k = xi; k < xf; k++) {
-						altura = h(calculaDistancia(k * aspectx, j * aspecty, x_gota_lago, y_gota_lago), t);
-						
-						if(fabs(altura) >= EPS) {
-							lago[j][k] += altura;
-							
-						}
-					}
+				if(ondaDentroQuadrado) {
+					media_x =  (int) ceil((float) (xi+xf)/2);
+					media_y =  (int) ceil((float) (yi+yf)/2);
+					zeraLago(lagoaux, yi, yf, xi, xf);
+					calculaQuadradoLago(lagoaux, yi, media_y, xi, media_x, y_gota_lago, x_gota_lago, t);
+					espelhaQuadrado(lagoaux, yi, media_y, yf, xi, media_x, xf, 1);
+					// tem_gota[yi][xi] = 1;
+					// tem_gota[yi][media_x] = 1;
+					// tem_gota[yi][xf] = 1;
+					// tem_gota[media_y][xi] = 1;
+					// tem_gota[media_y][media_x] = 1;
+					// tem_gota[media_y][xf] = 1;
+					// tem_gota[yf][xi] = 1;
+					// tem_gota[yf][media_x] = 1;
+					// tem_gota[yf][xf] = 1;
+					espelhaQuadrado(lagoaux, yi, media_y, yf, xi, media_x, xf, 2);
+					espelhaQuadrado(lagoaux, yi, media_y, yf, xi, media_x, xf, 3);
+					somaLagos(lago, lagoaux, yi, yf, xi, xf);
 				}
+				else
+					calculaQuadradoLago(lago, yi, yf, xi, xf, y_gota_lago, x_gota_lago,  t);
 			}
 			if(i < NITER -1)
-			zeraLago(lago, ymin, ymax, xmin, xmax);
+				zeraLago(lago, ymin, ymax, xmin, xmax);
 		}
 		if(rand() <= ((float) P/100) * RAND_MAX) {
 			gotas[numGotas].x = inteiroAleatorio(L);
@@ -224,4 +252,58 @@ void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) {
 float h(float ro, float t) {
 	float aux = ro - V*t;
 	return aux * exp(-1*aux*aux - (t/10));
+}
+
+void calculaQuadradoLago(float** lago, int yi, int yf, int xi, int xf, float y_gota_lago, float x_gota_lago, float t) {
+	int j, k;
+	float altura;
+	#pragma omp parallel for private(altura, k) 
+	for(j = yi; j < yf; j++) {
+		for(k = xi; k < xf; k++) {
+			altura = h(calculaDistancia(k * aspectx, j * aspecty, x_gota_lago, y_gota_lago), t);
+			
+			if(fabs(altura) >= EPS) {
+				lago[j][k] += altura;
+				
+			}
+		}
+	}
+}
+/* tentar mudar media_y e media_x pra x e y da gota */
+void espelhaQuadrado(float** lagoaux, int yi, int media_y, int yf, int xi, int media_x, int xf,  int quadrante) {
+	int i,j;
+
+	if(quadrante == 1) {
+		#pragma omp parallel for private(j) 
+		for(i = yi; i < media_y; i++) {
+			for(j = media_x; j < xf; j++) {
+				lagoaux[i][j] = lagoaux[i][xf-j-1+xi];
+			}
+		}
+	}
+	else if(quadrante == 2) {
+		#pragma omp parallel for private(j)
+		for(i = media_y; i < yf; i++){
+			for(j = media_x; j < xf; j++) {
+				lagoaux[i][j] = lagoaux[yf-i-1+yi][xf-j-1+xi];
+			}
+		}
+	}
+	else {
+		#pragma omp parallel for private(j)
+		for(i = media_y; i < yf; i++) {
+			for(j = xi; j < media_x; j++) {
+				lagoaux[i][j] = lagoaux[yf-i-1+yi][j];
+			}
+		}
+	}
+}
+
+void somaLagos(float** lago, float** lagoaux, int yi, int yf, int xi, int xf) {
+	int i, j;
+	for(i = yi; i < yf; i++) {
+		for(j = xi; j < xf; j++) {
+			lago[i][j] += lagoaux[i][j];
+		}
+	}
 }
