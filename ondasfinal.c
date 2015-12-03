@@ -1,3 +1,11 @@
+/*************************************
+EP MAC431
+
+Gabriel Ferreira Guilhoto    - 4404279
+Luciana de Melo e Abud       - 7991002
+Renato Massao Maeda da Silva - 7990954
+**************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
@@ -35,7 +43,6 @@ float aspectx, aspecty;
 float P, V, EPS;
 float** soma;
 float** soma_quadrados;
-float** tem_gota;
 
 int main (int argc, char* argv[]) {
 
@@ -49,7 +56,6 @@ int main (int argc, char* argv[]) {
 	aspecty = (float) ALT/H;
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
-	tem_gota = criaMatriz (H, L);
 	soma = criaMatriz (H, L);
 	soma_quadrados = criaMatriz (H, L);
 	raizdedois = sqrt(2)/2;
@@ -103,10 +109,6 @@ int main (int argc, char* argv[]) {
 		if(rand() <= ((float) P/100) * RAND_MAX) {
 			gotas[numGotas].x = inteiroAleatorio(L);
 			gotas[numGotas].y = inteiroAleatorio(H);
-
-			tem_gota[(int) (gotas[numGotas].y)][(int) (gotas[numGotas].x)] = 1;
-
-			printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
 			gotas[numGotas].tempo = (float) i * T / NITER;
 			numGotas++;
 
@@ -150,8 +152,12 @@ void pegaEntrada(int argc, char* argv[]) {
 	FILE *entrada;
 	if(argc > 1) {
 		entrada = fopen(argv[1], "r");
-		fscanf(entrada, "(%d,%d) \n (%d,%d) \n %d \n %f \n %f \n %d \n %f \n %d",
-			&LARG, &ALT, &L, &H, &T, &V, &EPS, &NITER, &P, &SEED);
+		if(fscanf(entrada, "(%d,%d) \n (%d,%d) \n %d \n %f \n %f \n %d \n %f \n %d",
+			&LARG, &ALT, &L, &H, &T, &V, &EPS, &NITER, &P, &SEED) != 10) {
+			printf("O arquivo de entrada está no formato errado\n");
+			fclose(entrada);
+			exit(EXIT_FAILURE);	
+		}
 		fclose(entrada);
 
 		if(argc > 2)
@@ -187,7 +193,6 @@ void escreveArquivo(float** lago) {
 		}
 	}
 
-	printf("hmax: %f pmax: %f \n", hmax, pmax); 
 	delta = (hmax > -pmax)? hmax/255 : -pmax/255;  
 	if(delta == 0)
 		delta = 1;
@@ -195,19 +200,13 @@ void escreveArquivo(float** lago) {
 		for(j = 0; j < L; j++) {
 			media = soma[i][j]/NITER;
 			desvio_padrao = sqrt((soma_quadrados[i][j]/NITER)-media*media);
-			if(tem_gota[i][j] == 1)
-				fprintf(imagem, "0 255 0\n");
-			else if(tem_gota[i][j] == 2)
-				fprintf(imagem, "255 255 255\n");
-			else
-			{
-				if(lago[i][j] < 0) {
-					fprintf(imagem, "%d 0 0\n", (int) ceil(-lago[i][j]/delta));
-				}
-				else {
-					fprintf(imagem, "0 0 %d\n", (int) ceil(lago[i][j]/delta));
-				}
-			}			
+			fprintf(estatisticas, "%d %d %12.7f %12.7f\n", i,j, media, desvio_padrao);
+			if(lago[i][j] < 0) {
+				fprintf(imagem, "%d 0 0\n", (int) ceil(-lago[i][j]/delta));
+			}
+			else {
+				fprintf(imagem, "0 0 %d\n", (int) ceil(lago[i][j]/delta));
+			}
 		}
 	}
 	fclose(imagem);
@@ -220,8 +219,6 @@ void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) {
 		for(j = xmin; j < xmax; j++) {
 			soma[i][j] += lago[i][j];
 			soma_quadrados[i][j] += lago[i][j] * lago[i][j];
-			if(i == 0 && j == 0)
-				printf("altura: %f \n", lago[i][j]);
 			lago[i][j] = 0;
 		}
 	}
