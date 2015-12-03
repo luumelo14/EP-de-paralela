@@ -1,0 +1,18 @@
+EP MAC431
+
+Gabriel Ferreira Guilhoto    - 4404279
+Luciana de Melo e Abud       - 7991002
+Renato Massao Maeda da Silva - 7990954
+
+
+Como compilar
+-------------
+$ make
+
+
+Como rodar
+----------
+$ ./ondas <arq_entrada>
+em que <arq_entrada> é o nome do arquivo de entrada.
+A imagem final de saída é salva em um arquivo chamado saida.ppm, e as estatísticas (média e desvio padrão) são salvas em um arquivo chamado estatisticas.txt. 
+O arquivo de entrada deve respeitar o formato do enunciado, com exatidão. 

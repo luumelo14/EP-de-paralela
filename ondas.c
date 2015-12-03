@@ -1,17 +1,15 @@
+/*************************************
+EP MAC431
+
+Gabriel Ferreira Guilhoto    - 4404279
+Luciana de Melo e Abud       - 7991002
+Renato Massao Maeda da Silva - 7990954
+**************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <omp.h>
 #include <math.h>
-
-/* #define H 5
-// #define L 5
-// #define P 90
-// #define NITER 30
-// #define T 120
-// #define V 10
-// #define ALT 5
-// #define LARG 5 */
-
 
 float** criaMatriz (int m, int n);
 int temGota (int maxRand);
@@ -19,6 +17,9 @@ int inteiroAleatorio (int maximo);
 float calculaDistancia (int x1, int y1, int x2, int y2);
 void escreveArquivo(float** lago);
 void pegaEntrada(int argc, char* argv[]);
+void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax);
+float h(float p, float t);
+void calculaQuadradoLago(float** lago, int xi, int xf, int yi, int yf, float x_gota_lago, float y_gota_lago, float t);
 
 typedef struct {
 	int x;
@@ -26,71 +27,83 @@ typedef struct {
 	float tempo;
 } gota;
 
-int H, L, NITER, T, SEED, NPROCS, ALT, LARG;
-float P, V, EPS;
 
-float** tem_gota;
+int H, L, NITER, T, SEED, NPROCS, ALT, LARG;
+float aspectx, aspecty;
+float P, V, EPS;
+float** soma;
+float** soma_quadrados;
 
 int main (int argc, char* argv[]) {
 
-	int i, j, k, l, numGotas = 0;
-	float t, aux;
+	int i, l, xi, yi, xf, yf, xmin, xmax, ymin, ymax, numGotas = 0;
+	float t, auxx, auxy, max, raizdedois, x_gota_lago, y_gota_lago;
 	gota * gotas;
 	float** lago;
-	float aspectx, aspecty;
-	float h;
-
 	pegaEntrada(argc, argv);
+	srand(SEED);
 	aspectx = (float) LARG/L;
 	aspecty = (float) ALT/H;
 	gotas = malloc (NITER * sizeof(gota));
 	lago = criaMatriz (H, L);
-	tem_gota = criaMatriz (H, L);
+	soma = criaMatriz (H, L);
+	soma_quadrados = criaMatriz (H, L);
+	raizdedois = sqrt(2)/2;
+	
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
-			#pragma omp parallel for private(t, aux, h, k, l) 
-			for(j = 0; j < H; j++) {
-				for(k = 0; k < L; k++) {
-					lago[j][k] = 0;
-					for(l = 0; l < numGotas; l++) {
-						t = (float) i * T / NITER - gotas[l].tempo;
-						/* aux = ro - v*t */
-						aux = calculaDistancia(k * aspectx, j * aspecty, gotas[l].x * aspectx, gotas[l].y * aspecty) - V*t;
+			xmin = L; xmax = 0; ymin = L; ymax = 0;
+			for(l = 0; l < numGotas; l++) {
+				t = (float) i * T / NITER - gotas[l].tempo;
+				max = (raizdedois + V*t);
+				auxy = (int) (max/aspecty);
+				auxx = (int) (max/aspectx);
 
-						h = aux * exp(-1*aux*aux - (t/10));
-						
-						if(fabs(h) >= EPS) {
-							lago[j][k] += h;
-							// if(abs(aux - sqrt(2)/2) < EPS){
-							// 	if(l == 16)
-							// 	tem_gota[j][k] = 1;
-							// }
-						}
-					}
+				yi = gotas[l].y - auxy - 1;
+				if(yi < 0) yi = 0;	
+				yf =  gotas[l].y + auxy + 1;
+				if(yf > H) yf = H;
+				xi = gotas[l].x - auxx - 1;
+				if(xi < 0) xi = 0;	
+				xf =  gotas[l].x + auxx + 1;
+				if(xf > L) xf = L;
+
+				x_gota_lago = gotas[l].x * aspectx;
+				y_gota_lago = gotas[l].y * aspecty;
+
+				while(yi > 0 && h(calculaDistancia(x_gota_lago, yi * aspecty, x_gota_lago, y_gota_lago), t) > EPS) {
+					yi--;
 				}
+				while(yf < H && h(calculaDistancia(x_gota_lago, yf * aspecty, x_gota_lago, y_gota_lago), t) > EPS) {
+					yf++;
+				}
+				while(xi > 0 && h(calculaDistancia(xi * aspectx, y_gota_lago, x_gota_lago, y_gota_lago), t) > EPS) {
+					xi--;
+				}
+				while(xf < L && h(calculaDistancia(xf * aspectx, y_gota_lago, x_gota_lago, y_gota_lago), t) > EPS) {
+					xf++;
+				}
+
+				if(yi < ymin) ymin = yi;
+				if(xi < xmin) xmin = xi; 
+				if(yf > ymax) ymax = yf;
+				if(xf > xmax) xmax = xf;
+
+				calculaQuadradoLago(lago, xi, xf, yi, yf, x_gota_lago, y_gota_lago, t);
 			}
+			if(i < NITER -1)
+			zeraLago(lago, ymin, ymax, xmin, xmax);
 		}
 		if(rand() <= ((float) P/100) * RAND_MAX) {
 			gotas[numGotas].x = inteiroAleatorio(L);
 			gotas[numGotas].y = inteiroAleatorio(H);
-
-
-			tem_gota[(int) (gotas[numGotas].y)][(int) (gotas[numGotas].x)] = 1;
-
-			//printf("gerou uma gota de numero %d: %d %d \n", numGotas, gotas[numGotas].x, gotas[numGotas].y);
 			gotas[numGotas].tempo = (float) i * T / NITER;
 			numGotas++;
 
 		}
 	}
 	
-	// for(j = 0; j < H; j++) {
-	// 	for(k = 0; k < L; k++) {
-	// 		printf("%f ", lago[j][k]);
-	// 	}
-	// 	printf("\n");
-	// }
 	escreveArquivo(lago);
 	return 0;
 }
@@ -122,8 +135,12 @@ void pegaEntrada(int argc, char* argv[]) {
 	FILE *entrada;
 	if(argc > 1) {
 		entrada = fopen(argv[1], "r");
-		fscanf(entrada, "(%d,%d) \n (%d,%d) \n %d \n %f \n %f \n %d \n %f \n %d",
-			&LARG, &ALT, &L, &H, &T, &V, &EPS, &NITER, &P, &SEED);
+		if(fscanf(entrada, "(%d,%d) \n (%d,%d) \n %d \n %f \n %f \n %d \n %f \n %d",
+			&LARG, &ALT, &L, &H, &T, &V, &EPS, &NITER, &P, &SEED) != 10) {
+			printf("O arquivo de entrada está no formato errado\n");
+			fclose(entrada);
+			exit(EXIT_FAILURE);	
+		}
 		fclose(entrada);
 
 		if(argc > 2)
@@ -139,40 +156,88 @@ void pegaEntrada(int argc, char* argv[]) {
 void escreveArquivo(float** lago) {
 
 	int i, j;
-	float hmax = 0.0, pmax = 0.0, delta;
-	FILE *saida;
-	saida = fopen("saida.ppm", "w");
-	fprintf(saida, "P3\n");
-	fprintf(saida, "%d %d \n255\n", L, H);
+	float hmax = 0.0, pmax = 0.0, delta, media, desvio_padrao;
+	FILE *imagem; 
+	FILE *estatisticas;
+	imagem = fopen("imagem.ppm", "w");
+	estatisticas = fopen("estatisticas.txt", "w");
+	fprintf(imagem, "P3\n");
+	fprintf(imagem, "%d %d \n255\n", L, H);
 	
 	for(i = 0; i < H; i++) {
 		for(j = 0; j < L; j++) {
 			if(lago[i][j] > hmax) {
 				hmax = lago[i][j];
+
 			}
 			else if(lago[i][j] < pmax) {
 				pmax = lago[i][j];
 			}
 		}
 	}
-	printf("hmax: %f pmax: %f \n", hmax, pmax); 
+
 	delta = (hmax > -pmax)? hmax/255 : -pmax/255;  
 	if(delta == 0)
 		delta = 1;
 	for(i = 0; i < H; i++) {
 		for(j = 0; j < L; j++) {
-			if(tem_gota[i][j])
-				fprintf(saida, "0 255 0\n");
-			else
-			{
-				if(lago[i][j] < 0) {
-					fprintf(saida, "%d 0 0\n", (int) ceil(-lago[i][j]/delta));
-				}
-				else {
-					fprintf(saida, "0 0 %d\n", (int) ceil(lago[i][j]/delta));
-				}
-			}			
+			media = soma[i][j]/NITER;
+			desvio_padrao = sqrt((soma_quadrados[i][j]/NITER)-media*media);
+			fprintf(estatisticas, "%d %d %12.7f %12.7f\n", i,j, media, desvio_padrao);
+			if(lago[i][j] < 0) {
+				fprintf(imagem, "%d 0 0\n", (int) ceil(-lago[i][j]/delta));
+			}
+			else {
+				fprintf(imagem, "0 0 %d\n", (int) ceil(lago[i][j]/delta));
+			}
 		}
 	}
-	fclose(saida);
+	fclose(imagem);
+	fclose(estatisticas);
+}
+
+void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) {
+	int i, j;
+	for(i = ymin; i < ymax; i++) {
+		for(j = xmin; j < xmax; j++) {
+			soma[i][j] += lago[i][j];
+			soma_quadrados[i][j] += lago[i][j] * lago[i][j];
+			lago[i][j] = 0;
+		}
+	}
+}
+
+float h(float ro, float t) {
+	float aux = ro - V*t;
+	return aux * exp(-1*aux*aux - (t/10));
+}
+
+void calculaQuadradoLago(float** lago, int xi, int xf, int yi, int yf, float x_gota_lago, float y_gota_lago, float t) {
+	int j, k;
+	float altura;
+	float x_m, y_m;
+	int xmin, xmax, ymin, ymax;
+
+	x_m = (float) (xi+xf)/2;
+	y_m = (float) (yi+yf)/2;
+	xmin = (int) ceil((xi + x_m)/2);
+	xmax = (int) ceil((xf + x_m)/2);
+	ymin = (int) ceil((yi + y_m)/2);
+	ymax = (int) ceil((yf + y_m)/2);
+
+	#pragma omp parallel for private(altura, k) 
+	for(j = yi; j < yf; j++) {
+		for(k = xi; k < xf; k++) {
+			if(j > ymin && j < ymax && k > xmin && k < xmax ) {
+				continue;
+			}
+			altura = h(calculaDistancia(k * aspectx, j * aspecty, x_gota_lago, y_gota_lago), t);
+			
+			if(fabs(altura) >= EPS) {
+				lago[j][k] += altura;
+				
+			}
+		}
+	}
+
 }
