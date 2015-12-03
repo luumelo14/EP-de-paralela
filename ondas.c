@@ -36,6 +36,8 @@ float aspectx, aspecty;
 float P, V, EPS;
 
 float** tem_gota;
+float** soma;
+float** soma_quadrados;
 
 int main (int argc, char* argv[]) {
 
@@ -54,7 +56,8 @@ int main (int argc, char* argv[]) {
 	tem_gota = criaMatriz (H, L);
 	lagoaux = criaMatriz (H, L);
 	raizdedois = sqrt(2)/2;
-
+	soma = criaMatriz (H, L);
+	soma_quadrados = criaMatriz (H, L);
 
 	for(i = 0; i < NITER; i++) {
 		if(numGotas != 0) {
@@ -200,9 +203,10 @@ void pegaEntrada(int argc, char* argv[]) {
 void escreveArquivo(float** lago) {
 
 	int i, j;
-	float hmax = 0.0, pmax = 0.0, delta;
-	FILE *saida;
+	float hmax = 0.0, pmax = 0.0, delta, media;
+	FILE *saida, *estatisticas;
 	saida = fopen("saida.ppm", "w");
+	estatisticas = fopen("estatisticas.txt", "w");
 	fprintf(saida, "P3\n");
 	fprintf(saida, "%d %d \n255\n", L, H);
 	
@@ -224,6 +228,8 @@ void escreveArquivo(float** lago) {
 		delta = 1;
 	for(i = 0; i < H; i++) {
 		for(j = 0; j < L; j++) {
+			media = soma[i][j]/NITER;
+			fprintf(estatisticas, "%d %d %12.7f %12.7f\n", i, j, media, sqrt((soma_quadrados[i][j]/NITER)-media*media));
 			if(tem_gota[i][j] == 1)
 				fprintf(saida, "0 255 0\n");
 			else if(tem_gota[i][j] == 2)
@@ -240,6 +246,7 @@ void escreveArquivo(float** lago) {
 		}
 	}
 	fclose(saida);
+	fclose(estatisticas);
 }
 
 void zeraLago(float** lago, int ymin, int ymax, int xmin, int xmax) {

@@ -221,9 +221,22 @@ float h(float ro, float t) {
 void calculaQuadradoLago(float** lago, int xi, int xf, int yi, int yf, float x_gota_lago, float y_gota_lago, float t) {
 	int j, k;
 	float altura;
+	float x_m, y_m;
+	int xmin, xmax, ymin, ymax;
+
+	x_m = (float) (xi+xf)/2;
+	y_m = (float) (yi+yf)/2;
+	xmin = (int) ceil((xi + x_m)/2);
+	xmax = (int) ceil((xf + x_m)/2);
+	ymin = (int) ceil((yi + y_m)/2);
+	ymax = (int) ceil((yf + y_m)/2);
+
 	#pragma omp parallel for private(altura, k) 
 	for(j = yi; j < yf; j++) {
 		for(k = xi; k < xf; k++) {
+			if(j > ymin && j < ymax && k > xmin && k < xmax ) {
+				continue;
+			}
 			altura = h(calculaDistancia(k * aspectx, j * aspecty, x_gota_lago, y_gota_lago), t);
 			
 			if(fabs(altura) >= EPS) {
@@ -232,4 +245,5 @@ void calculaQuadradoLago(float** lago, int xi, int xf, int yi, int yf, float x_g
 			}
 		}
 	}
+
 }
